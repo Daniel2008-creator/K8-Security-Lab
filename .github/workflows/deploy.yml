@@ -12,7 +12,18 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install kubeconform
-        run: curl -sL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz
+        run: |
+          curl -fsSL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz -o kubeconform.tar.gz
+          tar -xzf kubeconform.tar.gz
+          chmod +x kubeconform
 
       - name: Validate K8s manifests
-        run: ./kubeconform -strict -summary k8s/
+        run: |
+          if [ -d k8s ]; then
+            ./kubeconform -strict -summary k8s/
+          elif [ -f secure-secret.yaml ]; then
+            ./kubeconform -strict -summary secure-secret.yaml
+          else
+            echo "No K8s manifests found in k8s/ or repo root"
+            exit 1
+          fi
