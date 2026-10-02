@@ -1,0 +1,34 @@
+name: K8s Security Lab CI/CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start Minikube
+        uses: medyk/setup-minikube@latest
+
+      - name: Validate manifest
+        run: kubectl apply --dry-run=client -f k8s/secure-secret.yaml
+
+      - name: Deploy
+        run: kubectl apply -f k8s/secure-secret.yaml
+
+      - name: Wait for pod
+        run: kubectl wait --for=condition=Ready pod/secure-app --timeout=120s
+
+      - name: Verify RBAC
+        run: |
+          SA=system:serviceaccount:default:secret-reader-sa
+          kubectl auth can-i get secret/app-secret --as=$SA | grep yes
+          kubectl auth can-i delete secrets --as=$SA | grep no
+          kubectl auth can-i list pods --as=$SA | grep no
+
+      - name: Show resources
+        run: kubectl get secret,sa,role,rolebinding,pod
